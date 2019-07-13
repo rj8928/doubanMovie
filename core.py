@@ -23,7 +23,7 @@ director=''
 actor_list=[]
 actor=''
 release=''
-number=''
+movie=''
 cover=''
 imagecut=''
 tag=[]
@@ -39,10 +39,11 @@ location_rule=''#eval(config['Name_Rule']['location_rule'])
 #=====================本地文件处理===========================
 def argparse_get_file():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--number", help="Enter Number on here", default='')
+    parser.add_argument("--movie", help="Enter Number on here", default='')
     parser.add_argument("file", help="Write the file path on here")
+    parser.add_argument("--year", help="Write the file path on here")
     args = parser.parse_args()
-    return (args.file, args.number)
+    return (args.file, args.movie, args.year)
 def CreatFailedFolder():
     if not os.path.exists('failed/'):  # 新建failed文件夹
         try:
@@ -110,22 +111,24 @@ def getDataFromJSON(file_number): #从JSON返回元数据
     # ====================处理异常字符====================== #\/:*?"<>|
     if '\\' in title:
         title=title.replace('\\', ' ')
-    elif '/' in title:
+    if '/' in title:
         title=title.replace('/', '')
-    elif ':' in title:
-        title=title.replace('/', '')
-    elif '*' in title:
+    if ':' in title:
+        title=title.replace(':', '')
+    if '*' in title:
         title=title.replace('*', '')
-    elif '?' in title:
+    if '?' in title:
         title=title.replace('?', '')
-    elif '"' in title:
+    if '"' in title:
         title=title.replace('"', '')
-    elif '<' in title:
+    if '<' in title:
         title=title.replace('<', '')
-    elif '>' in title:
+    if '>' in title:
         title=title.replace('>', '')
-    elif '|' in title:
+    if '|' in title:
         title=title.replace('|', '')
+    if len(title)>72:
+        title = title[:72]
     # ====================处理异常字符 END================== #\/:*?"<>|
 
     naming_rule   = eval(config['Name_Rule']['naming_rule'])
@@ -204,7 +207,7 @@ def PrintFiles(filepath):
     try:
         if not os.path.exists(path):
             os.makedirs(path)
-        with open(path + "/" + number + ".nfo", "wt", encoding='UTF-8') as code:
+        with open(path + "/" + title+'-['+number+']' + ".nfo", "wt", encoding='UTF-8') as code:
             print("<movie>", file=code)
             print(" <title>" + naming_rule + "</title>", file=code)
             print("  <set>", file=code)
@@ -279,33 +282,22 @@ def cutImage():
 def pasteFileToFolder(filepath, path): #文件路径，番号，后缀，要移动至的位置
     global houzhui
     houzhui = str(re.search('[.](AVI|RMVB|WMV|MOV|MP4|MKV|FLV|TS|avi|rmvb|wmv|mov|mp4|mkv|flv|ts)$', filepath).group())
-    os.rename(filepath, number + houzhui)
-    shutil.move(number + houzhui, path)
+    os.rename(filepath, title+'-['+number+']' + houzhui)
+    shutil.move(title+'-['+number+']' + houzhui, path)
+
+
 def renameJpgToBackdrop_copy():
     shutil.copy(path+'/fanart.jpg', path+'/Backdrop.jpg')
     shutil.copy(path + '/poster.png', path + '/thumb.png')
 
-if __name__ == '__main__':
-    filepath=argparse_get_file()[0] #影片的路径
 
-    if '-c.' in filepath or '-C.' in filepath or '中文' in filepath or '字幕' in filepath:
-        cn_sub='1'
-
-    if argparse_get_file()[1] == '':    #获取手动拉去影片获取的番号
-        try:
-            number = str(re.findall(r'(.+?)\.',str(re.search('([^<>/\\\\|:""\\*\\?]+)\\.\\w+$',filepath).group()))).strip("['']").replace('_','-')
-            print("[!]Making Data for   [" + number + "]")
-        except:
-            print("[-]failed!Please rename the filename again!")
-            shutil.move(filepath,'failed/')
-    else:
-        number = argparse_get_file()[1]
+def run(filepath, movieInfo):
+    filepath = argparse_get_file()[0]  # 影片的路径
     CreatFailedFolder()
-    getDataFromJSON(number)  # 定义番号
+    getDataFromJSON(number)
     creatFolder()  # 创建文件夹
     imageDownload(filepath)  # creatFoder会返回番号路径
     PrintFiles(filepath)  # 打印文件
     cutImage()  # 裁剪图
     pasteFileToFolder(filepath, path)  # 移动文件
     renameJpgToBackdrop_copy()
-    # time.sleep(20)
